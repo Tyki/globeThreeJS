@@ -27,6 +27,8 @@ document.body.appendChild(renderer.domElement)
 renderer.setClearColor(0xffffff, 1)
 
 const textureLoader = new THREE.TextureLoader()
+const avatarTexture = new THREE.TextureLoader().load(avatar)
+
 const earthTexture = textureLoader.load(earthAsset)
 const earthGeometry = new THREE.SphereGeometry(earthRadius, 64, 64)
 const earthMaterial = new THREE.MeshStandardMaterial({
@@ -47,25 +49,27 @@ const sprites = [
     lon: -74.3093235,
     sprite: null,
     text: null,
+    visibility: true,
   },
   {
     lat: 19.1687382,
     lon: -96.305809,
     sprite: null,
     text: null,
+    visibility: true,
   },
   {
     lat: 48.864716,
     lon: 2.349014,
     sprite: null,
     text: null,
+    visibility: true,
   },
 ]
 
-const map = new THREE.TextureLoader().load(avatar)
 for (const item of sprites) {
   const spriteMaterial = new THREE.SpriteMaterial({
-    map,
+    map: avatarTexture,
     transparent: true,
   })
   const sprite = new THREE.Sprite(spriteMaterial)
@@ -74,27 +78,29 @@ for (const item of sprites) {
   item.sprite = sprite
 }
 
+// TODO: only if debug
 // The X axis is red. The Y axis is green. The Z axis is blue.
-const axesHelper = new THREE.AxesHelper(10)
+// const axesHelper = new THREE.AxesHelper(10)
 // axesHelper.position.x = 10
-scene.add(axesHelper)
+// scene.add(axesHelper)
 
 let labelDiv = document.getElementById('markerLabel')
 let closeBtn = document.getElementById('closeButton')
 closeBtn.addEventListener('pointerdown', () => {
-  console.log('ici')
   orbit.enabled = true
   rotate = true
   label.element.classList.add('hidden')
-})
-closeBtn.addEventListener('click', () => {
-  console.log('click')
+  for (const sprite of sprites) {
+    sprite.visibility = true
+  }
 })
 
 let label = new CSS2DObject(labelDiv)
 labelScene.add(label)
 
 const orbit = new OrbitControls(camera, renderer.domElement)
+orbit.enableZoom = false
+orbit.rotateSpeed = 0.3
 
 function toScreenPosition(obj, camera) {
   const vector = new THREE.Vector3()
@@ -112,6 +118,13 @@ function toScreenPosition(obj, camera) {
 }
 
 function gsapCenterSpriteonScreen(point, sprite) {
+  //hide all sprites
+  for (const sprite of sprites) {
+    sprite.visibility = false
+  }
+
+  sprite.visibility = true
+
   rotate = false
   orbit.enabled = false
   const spherical = new THREE.Spherical()
@@ -139,7 +152,7 @@ function gsapCenterSpriteonScreen(point, sprite) {
       let divID = document.getElementById('text')
       divID.innerHTML = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum`
 
-      const screenPosition = toScreenPosition(sprite, camera)
+      const screenPosition = toScreenPosition(sprite.sprite, camera)
 
       // Placer le label aux coordonnées écran calculées
       label.element.style.left = `${screenPosition.x}px`
@@ -169,7 +182,7 @@ function animate() {
 
   for (const sprite of sprites) {
     updateSpritePosition(earth, sprite.sprite, sprite.lat, sprite.lon, earthRadius)
-    adjustSpriteOpacity(camera, sprite.sprite)
+    adjustSpriteOpacity(camera, sprite)
   }
 
   // Rendu de la scène
@@ -199,9 +212,16 @@ renderer.domElement.addEventListener('click', function (event) {
 
     // Do not intercept clicks when modal is opened (IE: orbit controlls are disabled)
     if (intersects.length > 0 && orbit?.enabled) {
-      gsapCenterSpriteonScreen(intersects[0].point, sprite.sprite)
-      break
+      gsapCenterSpriteonScreen(intersects[0].point, sprite)
     }
   }
+})
+
+renderer.domElement.addEventListener('pointerdown', () => {
+  rotate = false
+})
+
+renderer.domElement.addEventListener('pointerup', () => {
+  rotate = true
 })
 </script>
