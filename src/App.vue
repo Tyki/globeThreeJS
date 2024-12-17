@@ -1,7 +1,13 @@
 <script setup>
 import gsap from 'gsap'
 import avatar from './assets/avatar.png'
-import earthAsset from './assets/earth_transparent.png'
+import earthAsset from './assets/earth.png'
+import Adrien from './assets/Adrien.png'
+import Gilles from './assets/Gilles.png'
+import Fabien from './assets/Fabien.png'
+import Jordan from './assets/Jordan.png'
+import Sophie from './assets/Sophie.png'
+import Xavier from './assets/Xavier.png'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
@@ -13,6 +19,7 @@ const cameraRadius = 10
 const animationDuration = 1
 let rotate = true
 let focusSprite = false
+let defaultPosition = null
 
 // SCENES & MESH
 const scene = new THREE.Scene()
@@ -97,6 +104,7 @@ const sprites = [
   {
     lat: 40.69754,
     lon: -74.3093235,
+    icon: Adrien,
     sprite: null,
     text: 'Je suis NY',
     visibility: true,
@@ -105,6 +113,7 @@ const sprites = [
   {
     lat: 19.1687382,
     lon: -96.305809,
+    icon: Gilles,
     sprite: null,
     text: 'Je suis Mexico je crois',
     visibility: true,
@@ -113,15 +122,43 @@ const sprites = [
   {
     lat: 48.864716,
     lon: 2.349014,
+    icon: Fabien,
     sprite: null,
     text: 'Je suis Paris',
     visibility: true,
     size: 'l',
   },
+  {
+    lat: 31.224361,
+    lon: 121.46917,
+    icon: Xavier,
+    sprite: null,
+    text: 'Je suis Shanghai',
+    visibility: true,
+    size: 's',
+  },
+  {
+    lat: -9.07609,
+    lon: 90.877426,
+    icon: Sophie,
+    sprite: null,
+    text: 'Je suis Bombay',
+    visibility: true,
+    size: 'm',
+  },
+  {
+    lat: 25.276987,
+    lon: 55.296249,
+    icon: Jordan,
+    sprite: null,
+    text: 'Je suis Dubai',
+    visibility: true,
+    size: 'l',
+  },
 ]
 
-const avatarTexture = new THREE.TextureLoader().load(avatar)
 for (const item of sprites) {
+  const avatarTexture = new THREE.TextureLoader().load(item.icon)
   const spriteMaterial = new THREE.SpriteMaterial({
     map: avatarTexture,
     transparent: true,
