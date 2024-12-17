@@ -52,3 +52,17 @@ export function toScreenPosition(obj, camera, renderer) {
 
   return { x, y }
 }
+
+export function getRandomPointInRange(minDistance, maxDistance) {
+  // Generate random spherical coordinates
+  const radius = Math.random() * (maxDistance - minDistance) + minDistance
+  const theta = Math.random() * Math.PI * 2 // Random angle between 0 and 2π
+  const phi = Math.acos(2 * Math.random() - 1) // Random angle between 0 and π
+
+  // Convert spherical coordinates to Cartesian coordinates
+  const x = radius * Math.sin(phi) * Math.cos(theta)
+  const y = radius * Math.sin(phi) * Math.sin(theta)
+  const z = radius * Math.cos(phi)
+
+  return { x, y, z }
+}

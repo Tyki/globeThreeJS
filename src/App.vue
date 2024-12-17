@@ -1,6 +1,5 @@
 <script setup>
 import gsap from 'gsap'
-import avatar from './assets/avatar.png'
 import earthAsset from './assets/earth.png'
 import Adrien from './assets/Adrien.png'
 import Gilles from './assets/Gilles.png'
@@ -12,11 +11,16 @@ import dot from './assets/dot.png'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
-import { toScreenPosition, updateSpritePosition, adjustSpriteOpacity } from './custom.js'
+import {
+  toScreenPosition,
+  updateSpritePosition,
+  adjustSpriteOpacity,
+  getRandomPointInRange,
+} from './custom.js'
 
 // CONSTANTES
 const earthRadius = 5
-const cameraRadius = 10
+const cameraRadius = 15
 const animationDuration = 1
 let rotate = true
 let focusSprite = false
@@ -74,7 +78,7 @@ varying vec2 vUv;
 void main() {
     // Direction vue-caméra
     vec3 viewDir = normalize(-vPosition);
-    
+
     // Produit scalaire pour détecter la face visible/cachée
     float facing = dot(viewDir, vNormal);
 
@@ -167,7 +171,7 @@ for (const item of sprites) {
   })
   const sprite = new THREE.Sprite(spriteMaterial)
 
-  const scaling = item.size === 's' ? 0.5 : item.size === 'm' ? 0.8 : 1
+  const scaling = item.size === 's' ? 1 : item.size === 'm' ? 1.5 : 2
   sprite.scale.set(scaling, scaling, 1)
   scene.add(sprite)
   item.sprite = sprite
@@ -175,13 +179,10 @@ for (const item of sprites) {
 
 const circleGrey = textureLoader.load(dot)
 
-function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceScale) {
+function generateDotsParticules(maxDots, map, reduceOpacity, scale) {
   let vertices = []
   for (let i = 0; i < maxDots; i++) {
-    let x = earthRadius * 2 * Math.random()
-    let y = earthRadius * 2 * Math.random()
-    let z = earthRadius * 2 * Math.random()
-
+    const { x, y, z } = getRandomPointInRange(5, 5.5)
     vertices.push([x, y, z])
   }
 
@@ -196,24 +197,19 @@ function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceSca
         transparent: true,
       }),
     )
-    particuleSprite.position.set(
-      earthRadius - vertices[i][0],
-      earthRadius - vertices[i][1],
-      earthRadius - vertices[i][2],
-    )
+    particuleSprite.position.set(vertices[i][0], vertices[i][1], vertices[i][2])
     particuleSprite.material.opacity = Math.random() - reduceOpacity
 
-    let randomScale = (Math.random() / reduceScale) * 1.2
-    particuleSprite.scale.set(randomScale, randomScale)
+    particuleSprite.scale.setScalar(scale)
     particulesGroup.add(particuleSprite)
   }
 
   return particulesGroup
 }
 
-const particuleLayer1 = generateDotsParticules(4000, 1.4, circleGrey, -0.2, 60)
-const particuleLayer2 = generateDotsParticules(2000, 1.8, circleGrey, 0, 40)
-const particuleLayer3 = generateDotsParticules(500, 1.5, circleGrey, 0, 20)
+const particuleLayer1 = generateDotsParticules(300, circleGrey, -0.2, 0.05)
+const particuleLayer2 = generateDotsParticules(125, circleGrey, 0, 0.1)
+const particuleLayer3 = generateDotsParticules(50, circleGrey, 0, 0.25)
 
 scene.add(particuleLayer1)
 scene.add(particuleLayer2)
@@ -238,6 +234,17 @@ labelScene.add(label)
 const orbit = new OrbitControls(camera, renderer.domElement)
 orbit.enableZoom = false
 orbit.rotateSpeed = 0.3
+
+function animateParticles(particlesGroup, time) {
+  particlesGroup.children.forEach((particule) => {
+    const speed = 0.005
+    const amplitude = 0.1
+
+    particule.position.x += Math.sin(time + particule.position.y) * speed * amplitude
+    particule.position.y += Math.sin(time + particule.position.x) * speed * amplitude
+    particule.position.z += Math.sin(time + particule.position.z) * speed * amplitude
+  })
+}
 
 function gsapCenterSpriteonScreen(point, sprite) {
   //hide all sprites
@@ -343,6 +350,8 @@ function resetCenter() {
 function animate() {
   requestAnimationFrame(animate)
 
+  const time = performance.now() * 0.001
+
   if (rotate) {
     earth.rotation.y += 0.001
   }
@@ -351,6 +360,10 @@ function animate() {
     updateSpritePosition(earth, sprite.sprite, sprite.lat, sprite.lon, earthRadius)
     adjustSpriteOpacity(camera, sprite)
   }
+
+  animateParticles(particuleLayer1, time)
+  animateParticles(particuleLayer2, time)
+  animateParticles(particuleLayer3, time)
 
   // Rendu de la scène
   renderer.render(scene, camera)
