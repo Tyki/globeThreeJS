@@ -8,6 +8,7 @@ import Fabien from './assets/Fabien.png'
 import Jordan from './assets/Jordan.png'
 import Sophie from './assets/Sophie.png'
 import Xavier from './assets/Xavier.png'
+import dot from './assets/dot.png'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
@@ -171,6 +172,52 @@ for (const item of sprites) {
   scene.add(sprite)
   item.sprite = sprite
 }
+
+const circleGrey = textureLoader.load(dot)
+
+function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceSale) {
+  let vertices = []
+  for (let i = 0; i < maxDots; i++) {
+    let x = earthRadius * 2 * Math.random()
+    let y = earthRadius * 2 * Math.random()
+    let z = earthRadius * 2 * Math.random()
+
+    vertices.push([x, y, z])
+  }
+
+  let particulesGroup = new THREE.Group()
+
+  for (let i = 0; i < vertices.length - 1; i++) {
+    let particuleSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: map,
+        color: 0xffffff,
+        sizeAttenuation: true,
+        transparent: true,
+      }),
+    )
+    particuleSprite.position.set(
+      earthRadius - vertices[i][0],
+      earthRadius - vertices[i][1],
+      earthRadius - vertices[i][2],
+    )
+    particuleSprite.material.opacity = Math.random() - reduceOpacity
+
+    let randomScale = Math.random() / reduceSale
+    particuleSprite.scale.set(randomScale, randomScale)
+    particulesGroup.add(particuleSprite)
+  }
+
+  return particulesGroup
+}
+
+const particuleLayer1 = generateDotsParticules(4000, 1.4, circleGrey, -0.2, 60)
+const particuleLayer2 = generateDotsParticules(2000, 1.8, circleGrey, 0, 40)
+const particuleLayer3 = generateDotsParticules(500, 1.5, circleGrey, 0, 20)
+
+scene.add(particuleLayer1)
+scene.add(particuleLayer2)
+scene.add(particuleLayer3)
 
 if (window.localStorage.debugMap) {
   // The X axis is red. The Y axis is green. The Z axis is blue.
