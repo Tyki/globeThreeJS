@@ -175,7 +175,7 @@ for (const item of sprites) {
 
 const circleGrey = textureLoader.load(dot)
 
-function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceSale) {
+function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceScale) {
   let vertices = []
   for (let i = 0; i < maxDots; i++) {
     let x = earthRadius * 2 * Math.random()
@@ -203,7 +203,7 @@ function generateDotsParticules(maxDots, skyLimit, map, reduceOpacity, reduceSal
     )
     particuleSprite.material.opacity = Math.random() - reduceOpacity
 
-    let randomScale = Math.random() / reduceSale
+    let randomScale = (Math.random() / reduceScale) * 1.2
     particuleSprite.scale.set(randomScale, randomScale)
     particulesGroup.add(particuleSprite)
   }
