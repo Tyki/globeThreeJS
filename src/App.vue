@@ -19,7 +19,7 @@ const cameraRadius = 10
 const animationDuration = 1
 let rotate = true
 let focusSprite = false
-let defaultPosition = null
+let oldCameraPosition = null
 
 // SCENES & MESH
 const scene = new THREE.Scene()
@@ -182,13 +182,7 @@ if (window.localStorage.debugMap) {
 let labelDiv = document.getElementById('markerLabel')
 let closeBtn = document.getElementById('closeButton')
 closeBtn.addEventListener('pointerdown', () => {
-  orbit.enabled = true
-  rotate = true
-  focusSprite = false
-  label.element.classList.add('hidden')
-  for (const sprite of sprites) {
-    sprite.visibility = true
-  }
+  resetCenter()
 })
 
 let label = new CSS2DObject(labelDiv)
@@ -206,6 +200,11 @@ function gsapCenterSpriteonScreen(point, sprite) {
 
   focusSprite = true
   sprite.visibility = true
+
+  oldCameraPosition = {}
+  oldCameraPosition.x = camera.position.x
+  oldCameraPosition.y = camera.position.y
+  oldCameraPosition.z = camera.position.z
 
   rotate = false
   orbit.enabled = false
@@ -253,6 +252,47 @@ function gsapCenterSpriteonScreen(point, sprite) {
     },
   })
 }
+
+function resetCenter() {
+  const newCameraPosition = new THREE.Vector3()
+  newCameraPosition.copy(oldCameraPosition)
+
+  // Animate between starting point and clicked point, linear interpolation
+  gsap.to(camera.position, {
+    duration: animationDuration,
+    x: newCameraPosition.x,
+    y: newCameraPosition.y,
+    z: newCameraPosition.z,
+    onUpdate: () => {
+      camera.lookAt(earth.position)
+    },
+    onComplete: () => {
+      label.element.classList.add('hidden')
+      label.element.style.pointerEvents = 'none'
+    },
+  })
+
+  gsap.to(camera, {
+    duration: animationDuration,
+    onUpdate: () => {
+      const currentDistance = camera.position.distanceTo(earth.position)
+      const scaleFactor = cameraRadius / currentDistance
+      camera.position.multiplyScalar(scaleFactor)
+      camera.lookAt(earth.position)
+    },
+  })
+
+  orbit.enabled = true
+  rotate = true
+  focusSprite = false
+  label.element.classList.add('hidden')
+  for (const sprite of sprites) {
+    sprite.visibility = true
+  }
+
+  oldCameraPosition = null
+}
+
 function animate() {
   requestAnimationFrame(animate)
 
