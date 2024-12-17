@@ -37,3 +37,18 @@ export function adjustSpriteOpacity(camera, object) {
     object.sprite.material.opacity = 1
   }
 }
+
+export function toScreenPosition(obj, camera, renderer) {
+  const vector = new THREE.Vector3()
+  const canvas = renderer.domElement
+
+  // Convertir la position 3D en espace écran
+  obj.getWorldPosition(vector)
+  vector.project(camera)
+
+  // Transformer en pixels dans le DOM
+  const x = (vector.x * 0.5 + 0.5) * canvas.clientWidth
+  const y = (-(vector.y * 0.5) + 0.5) * canvas.clientHeight
+
+  return { x, y }
+}

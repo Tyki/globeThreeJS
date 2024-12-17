@@ -1,16 +1,18 @@
 <script setup>
 import gsap from 'gsap'
 import avatar from './assets/avatar.png'
-import earthAsset from './assets/earth.jpg'
+import earthAsset from './assets/earth_transparent.png'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
-import { updateSpritePosition, adjustSpriteOpacity } from './custom.js'
+import { toScreenPosition, updateSpritePosition, adjustSpriteOpacity } from './custom.js'
 
 // CONSTANTES
 const earthRadius = 5
 const cameraRadius = 10
+const animationDuration = 1
 let rotate = true
+let focusSprite = false
 
 // SCENES & MESH
 const scene = new THREE.Scene()
@@ -27,16 +29,64 @@ document.body.appendChild(renderer.domElement)
 renderer.setClearColor(0xffffff, 1)
 
 const textureLoader = new THREE.TextureLoader()
-const avatarTexture = new THREE.TextureLoader().load(avatar)
 
 const earthTexture = textureLoader.load(earthAsset)
 const earthGeometry = new THREE.SphereGeometry(earthRadius, 64, 64)
-const earthMaterial = new THREE.MeshStandardMaterial({
-  map: earthTexture,
-  bumpMap: earthTexture,
-  bumpScale: 0.05,
+
+const uniforms = {
+  uTexture: { value: earthTexture },
+  uCameraPosition: { value: camera.position },
+  uOpacityFront: { value: 1.0 }, // Opacité de la face avant
+  uOpacityBack: { value: 0.1 }, // Opacité de la face arrière
+}
+
+const earthTestMaterial = new THREE.ShaderMaterial({
+  uniforms: uniforms,
+  vertexShader: `
+varying vec3 vNormal;
+varying vec3 vPosition;
+varying vec2 vUv;
+
+void main() {
+    vUv = uv; // Transmet les coordonnées UV
+    vNormal = normalize(normalMatrix * normal); // Normales orientées correctement
+    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`,
+  fragmentShader: `
+uniform sampler2D uTexture;
+uniform float uOpacityFront; // Opacité de la face visible (1.0 par défaut)
+uniform float uOpacityBack;  // Opacité de la face cachée
+
+varying vec3 vNormal;
+varying vec3 vPosition;
+varying vec2 vUv;
+
+void main() {
+    // Direction vue-caméra
+    vec3 viewDir = normalize(-vPosition);
+    
+    // Produit scalaire pour détecter la face visible/cachée
+    float facing = dot(viewDir, vNormal);
+
+    // Condition stricte : face visible = opacité maximale
+    float opacity = (facing > 0.0) ? uOpacityFront : uOpacityBack;
+
+    // Appliquer la texture
+    vec4 texColor = texture2D(uTexture, vUv);
+
+    // Couleur finale avec opacité ajustée
+    gl_FragColor = vec4(texColor.rgb, texColor.a * opacity);
+}
+`,
+  transparent: true,
+  side: THREE.DoubleSide, // On rend visible les deux côtés,
+  depthWrite: false,
+  depthTest: true,
 })
-const earth = new THREE.Mesh(earthGeometry, earthMaterial)
+
+const earth = new THREE.Mesh(earthGeometry, earthTestMaterial)
 scene.add(earth)
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.8)
@@ -48,47 +98,56 @@ const sprites = [
     lat: 40.69754,
     lon: -74.3093235,
     sprite: null,
-    text: null,
+    text: 'Je suis NY',
     visibility: true,
+    size: 's',
   },
   {
     lat: 19.1687382,
     lon: -96.305809,
     sprite: null,
-    text: null,
+    text: 'Je suis Mexico je crois',
     visibility: true,
+    size: 'm',
   },
   {
     lat: 48.864716,
     lon: 2.349014,
     sprite: null,
-    text: null,
+    text: 'Je suis Paris',
     visibility: true,
+    size: 'l',
   },
 ]
 
+const avatarTexture = new THREE.TextureLoader().load(avatar)
 for (const item of sprites) {
   const spriteMaterial = new THREE.SpriteMaterial({
     map: avatarTexture,
     transparent: true,
+    depthTest: false,
   })
   const sprite = new THREE.Sprite(spriteMaterial)
-  sprite.scale.set(0.5, 0.5, 1)
+
+  const scaling = item.size === 's' ? 0.5 : item.size === 'm' ? 0.8 : 1
+  sprite.scale.set(scaling, scaling, 1)
   scene.add(sprite)
   item.sprite = sprite
 }
 
-// TODO: only if debug
-// The X axis is red. The Y axis is green. The Z axis is blue.
-// const axesHelper = new THREE.AxesHelper(10)
-// axesHelper.position.x = 10
-// scene.add(axesHelper)
+if (window.localStorage.debugMap) {
+  // The X axis is red. The Y axis is green. The Z axis is blue.
+  const axesHelper = new THREE.AxesHelper(10)
+  axesHelper.position.x = 10
+  scene.add(axesHelper)
+}
 
 let labelDiv = document.getElementById('markerLabel')
 let closeBtn = document.getElementById('closeButton')
 closeBtn.addEventListener('pointerdown', () => {
   orbit.enabled = true
   rotate = true
+  focusSprite = false
   label.element.classList.add('hidden')
   for (const sprite of sprites) {
     sprite.visibility = true
@@ -102,27 +161,13 @@ const orbit = new OrbitControls(camera, renderer.domElement)
 orbit.enableZoom = false
 orbit.rotateSpeed = 0.3
 
-function toScreenPosition(obj, camera) {
-  const vector = new THREE.Vector3()
-  const canvas = renderer.domElement
-
-  // Convertir la position 3D en espace écran
-  obj.getWorldPosition(vector)
-  vector.project(camera)
-
-  // Transformer en pixels dans le DOM
-  const x = (vector.x * 0.5 + 0.5) * canvas.clientWidth
-  const y = (-(vector.y * 0.5) + 0.5) * canvas.clientHeight
-
-  return { x, y }
-}
-
 function gsapCenterSpriteonScreen(point, sprite) {
   //hide all sprites
   for (const sprite of sprites) {
     sprite.visibility = false
   }
 
+  focusSprite = true
   sprite.visibility = true
 
   rotate = false
@@ -137,8 +182,6 @@ function gsapCenterSpriteonScreen(point, sprite) {
   const newCameraPosition = new THREE.Vector3()
   newCameraPosition.setFromSphericalCoords(10, phi, theta)
 
-  const animationDuration = 1
-
   // Animate between starting point and clicked point, linear interpolation
   gsap.to(camera.position, {
     duration: animationDuration,
@@ -150,13 +193,13 @@ function gsapCenterSpriteonScreen(point, sprite) {
     },
     onComplete: () => {
       let divID = document.getElementById('text')
-      divID.innerHTML = `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum`
+      divID.innerHTML = sprite.text
 
-      const screenPosition = toScreenPosition(sprite.sprite, camera)
+      const screenPosition = toScreenPosition(sprite.sprite, camera, renderer)
 
       // Placer le label aux coordonnées écran calculées
       label.element.style.left = `${screenPosition.x}px`
-      label.element.style.top = `${screenPosition.y}px`
+      label.element.style.top = `${screenPosition.y + 60}px`
 
       label.element.classList.remove('hidden')
       label.element.style.pointerEvents = 'auto'
@@ -218,10 +261,13 @@ renderer.domElement.addEventListener('click', function (event) {
 })
 
 renderer.domElement.addEventListener('pointerdown', () => {
+  if (focusSprite) return
   rotate = false
 })
 
 renderer.domElement.addEventListener('pointerup', () => {
+  if (focusSprite) return
+
   rotate = true
 })
 </script>
